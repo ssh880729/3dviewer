@@ -195,12 +195,7 @@ export default function ViewerClient() {
 									</div>
 								)}
 							</div>
-							<div className="mt-2 flex gap-4">
-								<div className="flex flex-col items-start gap-1">
-									<span className="opacity-70 text-xs">조명 밝기</span>
-									<input type="range" min="0" max="3" step="0.1" value={light} onChange={(e)=>setLight(Number(e.target.value))} />
-									<span className="text-xs">{light.toFixed(1)}</span>
-								</div>
+							<div className="mt-2 flex gap-3">
 								<div className="flex flex-col items-start gap-1">
 									<span className="opacity-70 text-xs">조명 ZI</span>
 									<input type="range" min="0" max="360" value={az} onChange={(e)=>setAz(Number(e.target.value))} />
@@ -215,6 +210,29 @@ export default function ViewerClient() {
 									<span className="opacity-70 text-xs">도색</span>
 									<input type="color" value={paintColor} onChange={(e)=>{ const v=e.target.value; setPaintColor(v); window.__viewerApi?.applySelectedColor?.(v); }} />
 									<button className="px-2 py-1 rounded border text-xs" onClick={()=>window.__viewerApi?.applySelectedColor?.(paintColor)}>적용</button>
+									<label className="ml-2 text-xs opacity-70 border rounded px-2 py-1 cursor-pointer">
+										텍스처 선택
+										<input type="file" accept="image/*" className="hidden" onChange={(e)=>{ const f=e.target.files?.[0]; if(!f) return; window.__viewerApi?.applySelectedTextureFromFile?.(f); e.currentTarget.value=""; }} />
+									</label>
+									<button className="px-2 py-1 rounded border text-xs" onClick={()=>window.__viewerApi?.clearSelectedTexture?.()}>텍스처 제거</button>
+								</div>
+								<div className="flex items-center gap-2 ml-2 text-xs">
+									<div className="flex flex-col items-start gap-1">
+										<span className="opacity-70">편집 U</span>
+										<input type="range" min="-2" max="2" step="0.05" defaultValue={0} className="w-16" onChange={(e)=>{ const v=parseFloat(e.target.value||'0'); window.__viewerApi?.setDecalOffset?.(v, window.__viewerApi?.getDecalState?.()?.offsetV || 0); }} />
+									</div>
+									<div className="flex flex-col items-start gap-1">
+										<span className="opacity-70">V</span>
+										<input type="range" min="-2" max="2" step="0.05" defaultValue={0} className="w-16" onChange={(e)=>{ const v=parseFloat(e.target.value||'0'); window.__viewerApi?.setDecalOffset?.(window.__viewerApi?.getDecalState?.()?.offsetU || 0, v); }} />
+									</div>
+									<div className="flex flex-col items-start gap-1">
+										<span className="opacity-70">SX</span>
+										<input type="range" min="0.1" max="3" step="0.1" defaultValue={1} className="w-16" onChange={(e)=>{ const sx=parseFloat(e.target.value||'1'); const st=window.__viewerApi?.getDecalState?.(); window.__viewerApi?.setDecalScale?.(sx, st?.scaleY || 1); }} />
+									</div>
+									<div className="flex flex-col items-start gap-1">
+										<span className="opacity-70">SY</span>
+										<input type="range" min="0.1" max="3" step="0.1" defaultValue={1} className="w-16" onChange={(e)=>{ const sy=parseFloat(e.target.value||'1'); const st=window.__viewerApi?.getDecalState?.(); window.__viewerApi?.setDecalScale?.(st?.scaleX || 1, sy); }} />
+									</div>
 								</div>
 							</div>
 						</div>

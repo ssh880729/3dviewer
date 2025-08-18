@@ -9,6 +9,8 @@ import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { TransformControls } from "three/examples/jsm/controls/TransformControls.js";
+import { DecalGeometry } from "three/examples/jsm/geometries/DecalGeometry.js";
 
 export default function ModelViewer({ url, filename = "", files = [], onError, lockCamera = false, onReady, onStatus, lightAzimuthDeg = 45, lightElevationDeg = 60, lightIntensity = 1 }) {
 	const mountRef = useRef(null);
@@ -22,6 +24,13 @@ export default function ModelViewer({ url, filename = "", files = [], onError, l
 	const pointerRef = useRef(new THREE.Vector2());
 	const selectedRef = useRef(null);
 	const selectionHelperRef = useRef(null);
+	const lastHitRef = useRef(null);
+	const currentDecalRef = useRef(null);
+	const decalBasePointRef = useRef(new THREE.Vector3());
+	const decalBaseQuatRef = useRef(new THREE.Quaternion());
+	const decalOffsetRef = useRef({ u: 0, v: 0 });
+	const transformRef = useRef(null);
+	const editingDecalRef = useRef(false);
 	const [loading, setLoading] = useState(true);
 	const [progress, setProgress] = useState({ percent: 0, indeterminate: true });
 
@@ -63,6 +72,18 @@ export default function ModelViewer({ url, filename = "", files = [], onError, l
 		controls.enableDamping = true;
 		controls.enabled = !lockCamera; // 포인터 입력만 차단, 프로그래매틱 이동은 허용
 		controlsRef.current = controls;
+
+		const ensureTransformControls = () => {
+			if (transformRef.current) return transformRef.current;
+			const tc = new TransformControls(camera, renderer.domElement);
+			tc.space = "local";
+			tc.addEventListener("dragging-changed", (ev) => {
+				if (controlsRef.current) controlsRef.current.enabled = !ev.value;
+			});
+			scene.add(tc);
+			transformRef.current = tc;
+			return tc;
+		};
 
 		const api = {
 			pan: (dx = 0, dy = 0) => {
@@ -139,8 +160,159 @@ export default function ModelViewer({ url, filename = "", files = [], onError, l
 				else applyToMaterial(obj.material);
 				return true;
 			},
+			applySelectedTextureFromUrl: (imageUrl) => {
+				const obj = selectedRef.current;
+				if (!obj) {
+					onStatus?.({ type: "info", text: "선택된 대상이 없습니다" });
+					return false;
+				}
+				const loader = new THREE.TextureLoader();
+				loader.setCrossOrigin("anonymous");
+				const normalized = typeof imageUrl === "string" ? imageUrl : "";
+				const finalUrl = normalized ? toProxied(normalized) : normalized;
+				loader.load(
+					finalUrl,
+					(tex) => {
+						try {
+							tex.colorSpace = THREE.SRGBColorSpace;
+							tex.needsUpdate = true;
+							// If we have a last face hit, project as a decal onto that face area
+							const hit = lastHitRef.current;
+							if (hit && hit.object) {
+								const targetMesh = hit.object;
+								// Compute orientation from hit normal
+								const normal = hit.face?.normal ? hit.face.normal.clone() : hit.normal.clone();
+								// Transform normal to world space if needed
+								targetMesh.updateMatrixWorld(true);
+								const worldNormal = normal.clone().transformDirection(targetMesh.matrixWorld).normalize();
+								const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), worldNormal);
+								const euler = new THREE.Euler().setFromQuaternion(quat);
+								// Choose size based on object bounding box
+								const box = new THREE.Box3().setFromObject(targetMesh);
+								const boxSize = box.getSize(new THREE.Vector3());
+								const maxDim = Math.max(boxSize.x, boxSize.y, boxSize.z) || 1;
+								const s = Math.max(0.05, Math.min(maxDim / 10, 1.0));
+								const size = new THREE.Vector3(s, s, s);
+								const material = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: true, polygonOffset: true, polygonOffsetFactor: -1, side: THREE.DoubleSide });
+								const decalGeo = new DecalGeometry(targetMesh, hit.point.clone(), euler, size);
+								const decalMesh = new THREE.Mesh(decalGeo, material);
+								// Add decal to scene so it renders on top
+								scene.add(decalMesh);
+								currentDecalRef.current = decalMesh;
+								decalBasePointRef.current.copy(hit.point);
+								decalBaseQuatRef.current.copy(decalMesh.quaternion);
+								decalOffsetRef.current = { u: 0, v: 0 };
+								if (editingDecalRef.current) {
+									const tc = ensureTransformControls();
+									tc.attach(decalMesh);
+								}
+								onStatus?.({ type: "done", text: "텍스처(데칼) 적용됨" });
+							} else {
+								// Fallback: set as material map for whole mesh
+								const applyToMaterial = (mat) => {
+									if (!mat) return;
+									mat.map = tex;
+									if (mat.color) mat.color.set("#ffffff");
+									mat.needsUpdate = true;
+								};
+								if (Array.isArray(obj.material)) obj.material.forEach(applyToMaterial);
+								else applyToMaterial(obj.material);
+								onStatus?.({ type: "done", text: "텍스처 적용됨" });
+							}
+						} catch (e) {
+							onStatus?.({ type: "error", text: `텍스처 적용 중 오류: ${e?.message || ''}` });
+						}
+					},
+					undefined,
+					(err) => {
+						onStatus?.({ type: "error", text: `텍스처 로드 실패: ${err?.message || ''}` });
+					}
+				);
+				return true;
+			},
+			applySelectedTextureFromFile: (file) => {
+				if (!file) return false;
+				try {
+					const u = URL.createObjectURL(file);
+					return api.applySelectedTextureFromUrl(u);
+				} catch {
+					onStatus?.({ type: "error", text: "파일을 열 수 없습니다" });
+					return false;
+				}
+			},
+			clearSelectedTexture: () => {
+				const obj = selectedRef.current;
+				if (!obj) return false;
+				const clearFromMaterial = (mat) => {
+					if (!mat) return;
+					mat.map = null;
+					mat.needsUpdate = true;
+				};
+				if (Array.isArray(obj.material)) obj.material.forEach(clearFromMaterial);
+				else clearFromMaterial(obj.material);
+				onStatus?.({ type: "info", text: "텍스처 제거" });
+				return true;
+			},
+			toggleTextureEdit: () => {
+				editingDecalRef.current = !editingDecalRef.current;
+				const decal = currentDecalRef.current;
+				if (!decal) return editingDecalRef.current;
+				const tc = transformRef.current || (function(){
+					const t = new TransformControls(cameraRef.current, rendererRef.current?.domElement);
+					t.space = "local";
+					t.addEventListener("dragging-changed", (ev) => {
+						if (controlsRef.current) controlsRef.current.enabled = !ev.value;
+					});
+					const s = rendererRef.current?.domElement?.parentElement; // scene is already available
+					scene.add(t);
+					transformRef.current = t;
+					return t;
+				})();
+				if (editingDecalRef.current) tc.attach(decal); else tc.detach();
+				return editingDecalRef.current;
+			},
 		};
-		onReady?.(api);
+
+		const updateDecalPosition = () => {
+			const mesh = currentDecalRef.current;
+			if (!mesh) return;
+			const base = decalBasePointRef.current;
+			const q = decalBaseQuatRef.current;
+			const offs = decalOffsetRef.current;
+			const xAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(q);
+			const yAxis = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+			const pos = new THREE.Vector3().copy(base).addScaledVector(xAxis, offs.u).addScaledVector(yAxis, offs.v);
+			mesh.position.copy(pos);
+			mesh.updateMatrixWorld(true);
+		};
+
+		const apiWithDecal = {
+			...api,
+			setDecalScale: (sx = 1, sy = 1) => {
+				const mesh = currentDecalRef.current;
+				if (!mesh) return false;
+				mesh.scale.set(sx, sy, mesh.scale.z || 1);
+				mesh.updateMatrixWorld(true);
+				return true;
+			},
+			setDecalOffset: (u = 0, v = 0) => {
+				decalOffsetRef.current = { u, v };
+				updateDecalPosition();
+				return true;
+			},
+			getDecalState: () => {
+				const mesh = currentDecalRef.current;
+				if (!mesh) return null;
+				return {
+					scaleX: mesh.scale.x,
+					scaleY: mesh.scale.y,
+					offsetU: decalOffsetRef.current.u,
+					offsetV: decalOffsetRef.current.v,
+				};
+			},
+		};
+
+		onReady?.(apiWithDecal);
 
 		const ambient = new THREE.AmbientLight(0xffffff, 0.6);
 		scene.add(ambient);
@@ -504,6 +676,7 @@ export default function ModelViewer({ url, filename = "", files = [], onError, l
 					}
 					selectionHelperRef.current = null;
 					selectedRef.current = null;
+					lastHitRef.current = null;
 					onStatus?.({ type: "info", text: "선택 해제" });
 				} else {
 					if (selectionHelperRef.current && selectionHelperRef.current.parent) {
@@ -513,6 +686,7 @@ export default function ModelViewer({ url, filename = "", files = [], onError, l
 					selectionHelperRef.current = helper;
 					scene.add(helper);
 					selectedRef.current = firstMesh.object;
+					lastHitRef.current = firstMesh; // store last face hit for decal
 					onStatus?.({ type: "info", text: `선택: ${firstMesh.object.name || 'mesh'}` });
 				}
 			} else {
@@ -522,6 +696,7 @@ export default function ModelViewer({ url, filename = "", files = [], onError, l
 				}
 				selectionHelperRef.current = null;
 				selectedRef.current = null;
+				lastHitRef.current = null;
 				onStatus?.({ type: "info", text: "선택 해제" });
 			}
 		};
