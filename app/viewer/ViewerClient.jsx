@@ -23,6 +23,9 @@ export default function ViewerClient() {
 	const [el, setEl] = useState(60);
 	const [light, setLight] = useState(1);
 	const [paintColor, setPaintColor] = useState("#ff6600");
+	const [showEditTools, setShowEditTools] = useState(false);
+	const [showLighting, setShowLighting] = useState(false);
+	const [showTexture, setShowTexture] = useState(false);
 
 	useEffect(() => {
 		const u = searchParams.get("url") || "";
@@ -158,97 +161,141 @@ export default function ViewerClient() {
 								<label>카메라 고정</label>
 								<input type="checkbox" checked={lockCamera} onChange={(e) => setLockCamera(e.target.checked)} />
 							</div>
-							<div className="flex items-center gap-2">
-								<button
-									className={`w-9 h-9 rounded-full border grid place-items-center text-lg ${tool === "pen" ? "bg-foreground text-background" : ""}`}
-									onClick={() => setTool(tool === "pen" ? "none" : "pen")}
-									title="펜"
-									aria-label="펜"
-								>✏️</button>
-								<button
-									className={`w-9 h-9 rounded-full border grid place-items-center text-base ${tool === "text" ? "bg-foreground text-background" : ""}`}
-									onClick={() => setTool(tool === "text" ? "none" : "text")}
-									title="텍스트"
-									aria-label="텍스트"
-								>Ｔ</button>
-								<button
-									className="w-9 h-9 rounded-full border grid place-items-center text-lg"
-									onClick={() => window.__annoApi?.clear()}
-									title="지우개(전체)"
-									aria-label="지우개(전체)"
-								>🧽</button>
-								<button
-									className="w-9 h-9 rounded-full border grid place-items-center text-lg"
-									onClick={() => {
-										setTool('eraser');
-									}}
-									title="지우개(지정)"
-									aria-label="지우개(지정)"
-								>🪥</button>
-								{tool === "pen" && (
-									<div className="flex items-center gap-1 ml-1">
-										<button className={`w-5 h-5 rounded-full border ${penColor==="#000000"?"ring-2 ring-black":""}`} style={{background:'#000000'}} onClick={() => setPenColor('#000000')} title="검정" aria-label="검정" />
-										<button className={`w-5 h-5 rounded-full border ${penColor==="#ff0000"?"ring-2 ring-black":""}`} style={{background:'#ff0000'}} onClick={() => setPenColor('#ff0000')} title="빨강" aria-label="빨강" />
-										<button className={`w-5 h-5 rounded-full border ${penColor==="#0066ff"?"ring-2 ring-black":""}`} style={{background:'#0066ff'}} onClick={() => setPenColor('#0066ff')} title="파랑" aria-label="파랑" />
-										<button className={`w-5 h-5 rounded-full border ${penColor==="#ffcc00"?"ring-2 ring-black":""}`} style={{background:'#ffcc00'}} onClick={() => setPenColor('#ffcc00')} title="노랑" aria-label="노랑" />
-										<button className={`w-5 h-5 rounded-full border ${penColor==="#ffffff"?"ring-2 ring-black":""}`} style={{background:'#ffffff'}} onClick={() => setPenColor('#ffffff')} title="화이트" aria-label="화이트" />
+							
+							{/* 편집툴 그룹 */}
+							<div className="border-t pt-2">
+								<button 
+									className="flex items-center gap-2 w-full text-left text-xs font-medium opacity-70 hover:opacity-100"
+									onClick={() => setShowEditTools(!showEditTools)}
+								>
+									<span>{showEditTools ? '▼' : '▶'}</span>
+									편집툴
+								</button>
+								{showEditTools && (
+									<div className="mt-2 flex flex-col gap-2">
+										<div className="flex items-center gap-2">
+											<button
+												className={`w-9 h-9 rounded-full border grid place-items-center text-lg ${tool === "pen" ? "bg-foreground text-background" : ""}`}
+												onClick={() => setTool(tool === "pen" ? "none" : "pen")}
+												title="펜"
+												aria-label="펜"
+											>✏️</button>
+											<button
+												className={`w-9 h-9 rounded-full border grid place-items-center text-base ${tool === "text" ? "bg-foreground text-background" : ""}`}
+												onClick={() => setTool(tool === "text" ? "none" : "text")}
+												title="텍스트"
+												aria-label="텍스트"
+											>Ｔ</button>
+											<button
+												className="w-9 h-9 rounded-full border grid place-items-center text-lg"
+												onClick={() => window.__annoApi?.clear()}
+												title="지우개(전체)"
+												aria-label="지우개(전체)"
+											>🧽</button>
+											<button
+												className="w-9 h-9 rounded-full border grid place-items-center text-lg"
+												onClick={() => {
+													setTool('eraser');
+												}}
+												title="지우개(지정)"
+												aria-label="지우개(지정)"
+											>🪥</button>
+										</div>
+										{tool === "pen" && (
+											<div className="flex items-center gap-1">
+												<button className={`w-5 h-5 rounded-full border ${penColor==="#000000"?"ring-2 ring-black":""}`} style={{background:'#000000'}} onClick={() => setPenColor('#000000')} title="검정" aria-label="검정" />
+												<button className={`w-5 h-5 rounded-full border ${penColor==="#ff0000"?"ring-2 ring-black":""}`} style={{background:'#ff0000'}} onClick={() => setPenColor('#ff0000')} title="빨강" aria-label="빨강" />
+												<button className={`w-5 h-5 rounded-full border ${penColor==="#0066ff"?"ring-2 ring-black":""}`} style={{background:'#0066ff'}} onClick={() => setPenColor('#0066ff')} title="파랑" aria-label="파랑" />
+												<button className={`w-5 h-5 rounded-full border ${penColor==="#ffcc00"?"ring-2 ring-black":""}`} style={{background:'#ffcc00'}} onClick={() => setPenColor('#ffcc00')} title="노랑" aria-label="노랑" />
+												<button className={`w-5 h-5 rounded-full border ${penColor==="#ffffff"?"ring-2 ring-black":""}`} style={{background:'#ffffff'}} onClick={() => setPenColor('#ffffff')} title="화이트" aria-label="화이트" />
+											</div>
+										)}
 									</div>
 								)}
 							</div>
-							<div className="mt-2 flex flex-col gap-3">
-								<div className="flex flex-col items-start gap-1">
-									<span className="opacity-70 text-xs">조명 밝기</span>
-									<input type="range" min="0" max="3" step="0.1" value={light} onChange={(e)=>setLight(Number(e.target.value))} className="w-20" />
-									<span className="text-xs">{light.toFixed(1)}</span>
-								</div>
-								<div className="flex flex-col items-start gap-1">
-									<span className="opacity-70 text-xs">조명 ZI</span>
-									<input type="range" min="0" max="360" value={az} onChange={(e)=>setAz(Number(e.target.value))} className="w-20" />
-									<span className="text-xs">{az}°</span>
-								</div>
-								<div className="flex flex-col items-start gap-1">
-									<span className="opacity-70 text-xs">조명 EI</span>
-									<input type="range" min="0" max="90" value={el} onChange={(e)=>setEl(Number(e.target.value))} className="w-20" />
-									<span className="text-xs">{el}°</span>
-								</div>
+
+							{/* 조명 그룹 */}
+							<div className="border-t pt-2">
+								<button 
+									className="flex items-center gap-2 w-full text-left text-xs font-medium opacity-70 hover:opacity-100"
+									onClick={() => setShowLighting(!showLighting)}
+								>
+									<span>{showLighting ? '▼' : '▶'}</span>
+									조명
+								</button>
+								{showLighting && (
+									<div className="mt-2 flex flex-col gap-2">
+										<div className="flex flex-col items-start gap-1">
+											<span className="opacity-70 text-xs">조명 밝기</span>
+											<input type="range" min="0" max="3" step="0.1" value={light} onChange={(e)=>setLight(Number(e.target.value))} className="w-20" />
+											<span className="text-xs">{light.toFixed(1)}</span>
+										</div>
+										<div className="flex flex-col items-start gap-1">
+											<span className="opacity-70 text-xs">조명 ZI</span>
+											<input type="range" min="0" max="360" value={az} onChange={(e)=>setAz(Number(e.target.value))} className="w-20" />
+											<span className="text-xs">{az}°</span>
+										</div>
+										<div className="flex flex-col items-start gap-1">
+											<span className="opacity-70 text-xs">조명 EI</span>
+											<input type="range" min="0" max="90" value={el} onChange={(e)=>setEl(Number(e.target.value))} className="w-20" />
+											<span className="text-xs">{el}°</span>
+										</div>
+									</div>
+								)}
+							</div>
+
+							{/* 도색 (항상 표시) */}
+							<div className="border-t pt-2">
 								<div className="flex flex-col items-start gap-2">
-									<span className="opacity-70 text-xs">도색</span>
+									<span className="opacity-70 text-xs font-medium">도색</span>
 									<div className="flex items-center gap-2">
 										<input type="color" value={paintColor} onChange={(e)=>{ const v=e.target.value; setPaintColor(v); window.__viewerApi?.applySelectedColor?.(v); }} />
 										<button className="px-2 py-1 rounded border text-xs" onClick={()=>window.__viewerApi?.applySelectedColor?.(paintColor)}>적용</button>
 									</div>
 								</div>
-								<div className="flex flex-col items-start gap-2">
-									<span className="opacity-70 text-xs">텍스처</span>
-									<div className="flex items-center gap-2">
-										<label className="text-xs opacity-70 border rounded px-2 py-1 cursor-pointer">
-											선택
-											<input type="file" accept="image/*" className="hidden" onChange={(e)=>{ const f=e.target.files?.[0]; if(!f) return; window.__viewerApi?.applySelectedTextureFromFile?.(f); e.currentTarget.value=""; }} />
-										</label>
-										<button className="px-2 py-1 rounded border text-xs" onClick={()=>window.__viewerApi?.clearSelectedTexture?.()}>제거</button>
+							</div>
+
+							{/* 텍스처 그룹 */}
+							<div className="border-t pt-2">
+								<button 
+									className="flex items-center gap-2 w-full text-left text-xs font-medium opacity-70 hover:opacity-100"
+									onClick={() => setShowTexture(!showTexture)}
+								>
+									<span>{showTexture ? '▼' : '▶'}</span>
+									텍스처
+								</button>
+								{showTexture && (
+									<div className="mt-2 flex flex-col gap-2">
+										<div className="flex items-center gap-2">
+											<label className="text-xs opacity-70 border rounded px-2 py-1 cursor-pointer">
+												선택
+												<input type="file" accept="image/*" className="hidden" onChange={(e)=>{ const f=e.target.files?.[0]; if(!f) return; window.__viewerApi?.applySelectedTextureFromFile?.(f); e.currentTarget.value=""; }} />
+											</label>
+											<button className="px-2 py-1 rounded border text-xs" onClick={()=>window.__viewerApi?.clearSelectedTexture?.()}>제거</button>
+										</div>
+										<div className="flex flex-col items-start gap-2">
+											<span className="opacity-70 text-xs">편집</span>
+											<div className="grid grid-cols-2 gap-2">
+												<div className="flex flex-col items-start gap-1">
+													<span className="opacity-70 text-xs">편집 U</span>
+													<input type="range" min="-2" max="2" step="0.05" defaultValue={0} className="w-16" onChange={(e)=>{ const v=parseFloat(e.target.value||'0'); window.__viewerApi?.setDecalOffset?.(v, window.__viewerApi?.getDecalState?.()?.offsetV || 0); }} />
+												</div>
+												<div className="flex flex-col items-start gap-1">
+													<span className="opacity-70 text-xs">V</span>
+													<input type="range" min="-2" max="2" step="0.05" defaultValue={0} className="w-16" onChange={(e)=>{ const v=parseFloat(e.target.value||'0'); window.__viewerApi?.setDecalOffset?.(window.__viewerApi?.getDecalState?.()?.offsetU || 0, v); }} />
+												</div>
+												<div className="flex flex-col items-start gap-1">
+													<span className="opacity-70 text-xs">SX</span>
+													<input type="range" min="0.1" max="3" step="0.1" defaultValue={1} className="w-16" onChange={(e)=>{ const sx=parseFloat(e.target.value||'1'); const st=window.__viewerApi?.getDecalState?.(); window.__viewerApi?.setDecalScale?.(sx, st?.scaleY || 1); }} />
+												</div>
+												<div className="flex flex-col items-start gap-1">
+													<span className="opacity-70 text-xs">SY</span>
+													<input type="range" min="0.1" max="3" step="0.1" defaultValue={1} className="w-16" onChange={(e)=>{ const sy=parseFloat(e.target.value||'1'); const st=window.__viewerApi?.getDecalState?.(); window.__viewerApi?.setDecalScale?.(st?.scaleX || 1, sy); }} />
+												</div>
+											</div>
+										</div>
 									</div>
-								</div>
-								<div className="flex flex-col items-start gap-2">
-									<span className="opacity-70 text-xs">텍스처 편집</span>
-									<div className="grid grid-cols-2 gap-2">
-										<div className="flex flex-col items-start gap-1">
-											<span className="opacity-70 text-xs">편집 U</span>
-											<input type="range" min="-2" max="2" step="0.05" defaultValue={0} className="w-16" onChange={(e)=>{ const v=parseFloat(e.target.value||'0'); window.__viewerApi?.setDecalOffset?.(v, window.__viewerApi?.getDecalState?.()?.offsetV || 0); }} />
-										</div>
-										<div className="flex flex-col items-start gap-1">
-											<span className="opacity-70 text-xs">V</span>
-											<input type="range" min="-2" max="2" step="0.05" defaultValue={0} className="w-16" onChange={(e)=>{ const v=parseFloat(e.target.value||'0'); window.__viewerApi?.setDecalOffset?.(window.__viewerApi?.getDecalState?.()?.offsetU || 0, v); }} />
-										</div>
-										<div className="flex flex-col items-start gap-1">
-											<span className="opacity-70 text-xs">SX</span>
-											<input type="range" min="0.1" max="3" step="0.1" defaultValue={1} className="w-16" onChange={(e)=>{ const sx=parseFloat(e.target.value||'1'); const st=window.__viewerApi?.getDecalState?.(); window.__viewerApi?.setDecalScale?.(sx, st?.scaleY || 1); }} />
-										</div>
-										<div className="flex flex-col items-start gap-1">
-											<span className="opacity-70 text-xs">SY</span>
-											<input type="range" min="0.1" max="3" step="0.1" defaultValue={1} className="w-16" onChange={(e)=>{ const sy=parseFloat(e.target.value||'1'); const st=window.__viewerApi?.getDecalState?.(); window.__viewerApi?.setDecalScale?.(st?.scaleX || 1, sy); }} />
-										</div>
-									</div>
-								</div>
+								)}
 							</div>
 						</div>
 						<div className="absolute bottom-3 right-3 flex flex-col gap-2">
