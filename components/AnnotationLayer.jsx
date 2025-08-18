@@ -9,6 +9,7 @@ export default function AnnotationLayer({ activeTool = "none", color = "#000000"
 	const [isDrawing, setIsDrawing] = useState(false);
 	const strokesRef = useRef([]); // [{color, lineWidth, points:[{x,y},...] }]
 	const textsRef = useRef([]); // [{x,y,text,color,fontSize}]
+    const [textModal, setTextModal] = useState({ open: false, x: 0, y: 0, value: "" });
 
 	function resizeCanvas() {
 		const container = containerRef.current;
@@ -63,6 +64,21 @@ export default function AnnotationLayer({ activeTool = "none", color = "#000000"
 		return { x: e.clientX - rect.left, y: e.clientY - rect.top };
 	}
 
+    function distance(a, b) { const dx = a.x - b.x; const dy = a.y - b.y; return Math.hypot(dx, dy); }
+    function eraseAtPoint(p, radius = 12) {
+        const keptStrokes = [];
+        for (const s of strokesRef.current) {
+            const hit = s.points.some((pt) => distance(pt, p) <= radius);
+            if (!hit) keptStrokes.push(s);
+        }
+        strokesRef.current = keptStrokes;
+        const keptTexts = [];
+        for (const t of textsRef.current) {
+            if (distance({ x: t.x, y: t.y }, p) > radius) keptTexts.push(t);
+        }
+        textsRef.current = keptTexts;
+    }
+
 	function handlePointerDown(e) {
 		if (activeTool === "pen") {
 			e.preventDefault();
@@ -73,11 +89,12 @@ export default function AnnotationLayer({ activeTool = "none", color = "#000000"
 		} else if (activeTool === "text") {
 			e.preventDefault();
 			const p = getPos(e);
-			const text = window.prompt("텍스트 입력") || "";
-			if (text) {
-				textsRef.current = [...textsRef.current, { x: p.x, y: p.y, text, color, fontSize }];
-				redraw();
-			}
+			setTextModal({ open: true, x: p.x, y: p.y, value: "" });
+        } else if (activeTool === "eraser") {
+            e.preventDefault();
+            const p = getPos(e);
+            eraseAtPoint(p);
+            redraw();
 		}
 	}
 
@@ -118,6 +135,7 @@ export default function AnnotationLayer({ activeTool = "none", color = "#000000"
 				return canvas?.toDataURL("image/png");
 			},
 			getCanvas: () => canvasRef.current,
+            erasePoint: (x, y, r = 12) => { eraseAtPoint({ x, y }, r); redraw(); }
 		};
 		onReady?.(api);
 	}, [onReady]);
@@ -137,6 +155,32 @@ export default function AnnotationLayer({ activeTool = "none", color = "#000000"
 				onTouchMove={canInteract ? handlePointerMove : undefined}
 				onTouchEnd={canInteract ? handlePointerUp : undefined}
 		/>
+            { textModal.open && (
+                <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border rounded shadow-lg p-4 w-[300px] pointer-events-auto">
+                        <div className="text-sm font-medium mb-2">텍스트 입력</div>
+                        <input
+                            autoFocus
+                            type="text"
+                            value={textModal.value}
+                            onChange={(e)=>setTextModal(prev=>({...prev, value: e.target.value}))}
+                            className="w-full border rounded px-2 py-1 mb-3"
+                            placeholder="내용을 입력하세요"
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button className="px-3 py-1 border rounded" onClick={()=>setTextModal({open:false,x:0,y:0,value:""})}>취소</button>
+                            <button className="px-3 py-1 border rounded bg-foreground text-background" onClick={() => {
+                                const v = textModal.value.trim();
+                                if (v) {
+                                    textsRef.current = [...textsRef.current, { x: textModal.x, y: textModal.y, text: v, color, fontSize }];
+                                    redraw();
+                                }
+                                setTextModal({ open:false, x:0, y:0, value:"" });
+                            }}>확인</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 		</div>
 	);
 }
