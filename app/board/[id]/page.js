@@ -327,10 +327,11 @@ export default function PostDetail() {
                       />
                     )}
                     {activeFeedbackId && (
-                      <img
+                      <Image
                         src={(feedbacks.find((x)=>x.id===activeFeedbackId)||{}).annotation_url || ''}
                         alt="저장된 피드백"
-                        className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+                        fill
+                        className="object-contain pointer-events-none"
                       />
                     )}
                   </div>
