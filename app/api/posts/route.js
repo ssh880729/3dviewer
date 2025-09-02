@@ -1,9 +1,20 @@
+export const runtime = 'nodejs';
+
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 
 // 게시글 목록 조회
 export async function GET() {
   try {
+    // 환경변수 점검 (프로덕션 디버깅 도움)
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !anon) {
+      return NextResponse.json(
+        { error: 'Supabase 환경변수 누락', hint: 'NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY' },
+        { status: 500 }
+      );
+    }
     const supabase = createServerSupabaseClient();
     
     const { data: posts, error } = await supabase
@@ -14,7 +25,7 @@ export async function GET() {
     if (error) {
       console.error('게시글 조회 오류:', error);
       return NextResponse.json(
-        { error: '게시글을 불러오는데 실패했습니다.' },
+        { error: '게시글을 불러오는데 실패했습니다.', code: error.code || null, details: error.message || String(error) },
         { status: 500 }
       );
     }
@@ -29,7 +40,7 @@ export async function GET() {
   } catch (error) {
     console.error('서버 오류:', error);
     return NextResponse.json(
-      { error: '서버 오류가 발생했습니다.' },
+      { error: '서버 오류가 발생했습니다.', details: error?.message || String(error) },
       { status: 500 }
     );
   }
