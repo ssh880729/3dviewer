@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS posts (
   share_type VARCHAR(50) NOT NULL DEFAULT '업무공유',
   request_type VARCHAR(50),
   feedback_result VARCHAR(50),
+  feedback_result_ip VARCHAR(64),
+  feedback_result_updated_at TIMESTAMP WITH TIME ZONE,
+  feedback_result_by VARCHAR(100),
   image_url TEXT,
   image_name VARCHAR(255),
   image_size BIGINT,
@@ -73,6 +76,30 @@ CREATE TABLE IF NOT EXISTS post_images (
 
 CREATE INDEX IF NOT EXISTS post_images_post_id_idx ON post_images(post_id);
 CREATE UNIQUE INDEX IF NOT EXISTS post_images_post_order_idx ON post_images(post_id, order_index);
+
+-- 피드백 결과 변경 로그
+CREATE TABLE IF NOT EXISTS feedback_result_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  result VARCHAR(50) NOT NULL,
+  result_by VARCHAR(100),
+  result_ip VARCHAR(64),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS feedback_result_logs_post_id_idx ON feedback_result_logs(post_id);
+CREATE INDEX IF NOT EXISTS feedback_result_logs_created_at_idx ON feedback_result_logs(created_at);
+
+ALTER TABLE feedback_result_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can read feedback logs" ON feedback_result_logs;
+DROP POLICY IF EXISTS "Anyone can insert feedback logs" ON feedback_result_logs;
+
+CREATE POLICY "Anyone can read feedback logs" ON feedback_result_logs
+  FOR SELECT USING (true);
+
+CREATE POLICY "Anyone can insert feedback logs" ON feedback_result_logs
+  FOR INSERT WITH CHECK (true);
 
 -- 피드백(주석 스냅샷) 테이블
 CREATE TABLE IF NOT EXISTS feedbacks (

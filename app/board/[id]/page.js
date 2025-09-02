@@ -19,6 +19,7 @@ export default function PostDetail() {
   const [penColor, setPenColor] = useState('#000000');
   const [feedbacks, setFeedbacks] = useState([]);
   const [activeFeedbackId, setActiveFeedbackId] = useState(null);
+  const [resultLogs, setResultLogs] = useState([]);
   const [editing, setEditing] = useState(false);
   const [editShareType, setEditShareType] = useState('');
   const [editRequestType, setEditRequestType] = useState('');
@@ -83,6 +84,16 @@ export default function PostDetail() {
     }
   };
 
+  // 결과 로그 불러오기
+  const fetchResultLogs = async () => {
+    try {
+      const res = await fetch(`/api/posts/${params.id}/feedback-result-logs`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setResultLogs(data.logs || []);
+    } catch {}
+  };
+
   // 게시글 삭제
   const deletePost = async () => {
     if (!confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
@@ -115,11 +126,12 @@ export default function PostDetail() {
   };
 
   useEffect(() => {
-    if (params.id) {
-      fetchPost();
-      fetchComments();
-      fetchFeedbacks();
-    }
+    if (!params.id) return;
+    fetchPost();
+    fetchComments();
+    fetchFeedbacks();
+    fetchResultLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
   if (loading) {
@@ -453,23 +465,30 @@ export default function PostDetail() {
                     onChange={async (e)=>{
                       try{
                         const val = e.target.value || null;
+                        if (!val) {
+                          // 선택 안 함이면 바로 저장
+                          const res = await fetch(`/api/posts/${params.id}`,{
+                            method:'PUT', headers:{'Content-Type':'application/json'},
+                            body: JSON.stringify({
+                              content: post.content, shareType: post.share_type, requestType: post.request_type,
+                              feedbackResult: null, imageUrl: post.image_url, imageName: post.image_name, imageSize: post.image_size,
+                            })
+                          });
+                          if(!res.ok){ const ejson = await res.json().catch(()=>({})); throw new Error(ejson.error||'저장 실패'); }
+                          await fetchPost();
+                          return;
+                        }
+                        const by = prompt('피드백한 사람의 이름을 입력하세요');
+                        if (by === null) return; // 취소시 저장 안함
                         const res = await fetch(`/api/posts/${params.id}`,{
-                          method:'PUT',
-                          headers:{'Content-Type':'application/json'},
+                          method:'PUT', headers:{'Content-Type':'application/json'},
                           body: JSON.stringify({
-                            content: post.content,
-                            shareType: post.share_type,
-                            requestType: post.request_type,
-                            feedbackResult: val,
-                            imageUrl: post.image_url,
-                            imageName: post.image_name,
-                            imageSize: post.image_size,
+                            content: post.content, shareType: post.share_type, requestType: post.request_type,
+                            feedbackResult: val, feedbackBy: by || null,
+                            imageUrl: post.image_url, imageName: post.image_name, imageSize: post.image_size,
                           })
                         });
-                        if(!res.ok){
-                          const ejson = await res.json().catch(()=>({}));
-                          throw new Error(ejson.error||'저장 실패');
-                        }
+                        if(!res.ok){ const ejson = await res.json().catch(()=>({})); throw new Error(ejson.error||'저장 실패'); }
                         await fetchPost();
                       }catch(err){
                         alert(err.message||'오류가 발생했습니다.');
@@ -483,6 +502,45 @@ export default function PostDetail() {
                     <option value="양산진행">양산진행</option>
                   </select>
                 </div>
+                {/* 결과 요약: 로그가 없을 때만 표시 */}
+                {post.feedback_result && resultLogs.length === 0 && (
+                  <div className="mt-2 text-xs text-gray-600">
+                    선택: <span className="font-medium">{post.feedback_result}</span>
+                    {post.feedback_result_updated_at && (
+                      <>
+                        <span className="mx-2">•</span>
+                        시간: {new Date(post.feedback_result_updated_at).toLocaleString('ko-KR')}
+                      </>
+                    )}
+                    {post.feedback_result_by && (
+                      <>
+                        <span className="mx-2">•</span>
+                        담당: {post.feedback_result_by}
+                      </>
+                    )}
+                    {post.feedback_result_ip && (
+                      <>
+                        <span className="mx-2">•</span>
+                        IP: {post.feedback_result_ip}
+                      </>
+                    )}
+                  </div>
+                )}
+                {/* 결과 로그: 하나라도 있으면 요약 대신 로그 나열 */}
+                {resultLogs.length > 0 && (
+                  <div className="mt-2">
+                    <ul className="text-xs text-gray-600 space-y-1">
+                      {resultLogs.map((log) => (
+                        <li key={log.id} className="flex flex-wrap gap-2">
+                          <span>선택: <span className="font-semibold">{log.result}</span></span>
+                          <span>• 시간: {new Date(log.created_at).toLocaleString('ko-KR')}</span>
+                          {log.result_by && <span>• 담당: {log.result_by}</span>}
+                          {log.result_ip && <span>• IP: {log.result_ip}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
               </>
             )}
@@ -627,7 +685,7 @@ function PostExtraImages({ postId }) {
     <div className="grid grid-cols-2 gap-4">
       {images.map((img) => (
         <div key={img.id} className="relative w-full pb-[56%] bg-gray-100 rounded overflow-hidden">
-          <img src={img.image_url} alt={img.image_name || '추가 이미지'} className="absolute inset-0 w-full h-full object-contain" />
+          <Image src={img.image_url} alt={img.image_name || '추가 이미지'} fill className="object-contain" />
         </div>
       ))}
     </div>

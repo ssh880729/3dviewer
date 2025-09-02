@@ -43,7 +43,7 @@ export async function PUT(request, { params }) {
   try {
     const { id } = params;
     const body = await request.json();
-    const { content, shareType, imageUrl, imageName, imageSize, requestType, feedbackResult, author } = body;
+    const { content, shareType, imageUrl, imageName, imageSize, requestType, feedbackResult, feedbackBy, author } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -60,6 +60,9 @@ export async function PUT(request, { params }) {
     }
 
     const supabase = createServerSupabaseClient();
+
+    // 클라이언트 IP 추출 (X-Forwarded-For 우선)
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.ip || null;
     
     const { data: post, error } = await supabase
       .from('posts')
@@ -69,6 +72,9 @@ export async function PUT(request, { params }) {
         share_type: shareType,
         request_type: requestType ?? null,
         feedback_result: feedbackResult ?? null,
+        feedback_result_by: feedbackResult != null ? (feedbackBy || null) : undefined,
+        feedback_result_ip: feedbackResult != null ? ip : undefined,
+        feedback_result_updated_at: feedbackResult != null ? new Date().toISOString() : undefined,
         image_url: imageUrl,
         image_name: imageName,
         image_size: imageSize,
@@ -84,6 +90,14 @@ export async function PUT(request, { params }) {
         { error: '게시글 수정에 실패했습니다.' },
         { status: 500 }
       );
+    }
+
+    // 로그 기록 (결과 변경이 포함된 경우)
+    if (feedbackResult != null) {
+      const { error: logErr } = await supabase
+        .from('feedback_result_logs')
+        .insert([{ post_id: id, result: feedbackResult, result_by: feedbackBy || null, result_ip: ip }]);
+      if (logErr) console.warn('피드백 로그 기록 실패:', logErr);
     }
 
     return NextResponse.json({ post });

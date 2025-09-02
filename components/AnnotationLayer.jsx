@@ -11,6 +11,7 @@ export default function AnnotationLayer({ activeTool = "none", color = "#000000"
 	const textsRef = useRef([]); // [{x,y,text,color,fontSize}]
     const [textModal, setTextModal] = useState({ open: false, x: 0, y: 0, value: "" });
 	const previewArrowRef = useRef(null); // {x1,y1,x2,y2}
+    const [viewSize, setViewSize] = useState({ w: 0, h: 0 });
 
 	function resizeCanvas() {
 		const container = containerRef.current;
@@ -234,7 +235,14 @@ export default function AnnotationLayer({ activeTool = "none", color = "#000000"
 		/>
             { textModal.open && (
                 <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border rounded shadow-lg p-4 w-[300px] pointer-events-auto">
+                    {(() => {
+                        const modalW = 300; const modalH = 140; const pad = 8;
+                        const maxX = Math.max(0, (viewSize.w || 0) - modalW - pad);
+                        const maxY = Math.max(0, (viewSize.h || 0) - modalH - pad);
+                        const left = Math.min(Math.max(textModal.x + pad, pad), maxX);
+                        const top = Math.min(Math.max(textModal.y + pad, pad), maxY);
+                        return (
+                            <div className="absolute bg-white border rounded shadow-lg p-4 w-[300px] pointer-events-auto" style={{ left, top }}>
                         <div className="text-sm font-medium mb-2">텍스트 입력</div>
                         <input
                             autoFocus
@@ -255,7 +263,9 @@ export default function AnnotationLayer({ activeTool = "none", color = "#000000"
                                 setTextModal({ open:false, x:0, y:0, value:"" });
                             }}>확인</button>
                         </div>
-                    </div>
+                            </div>
+                        );
+                    })()}
                 </div>
             )}
 		</div>

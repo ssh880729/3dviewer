@@ -56,7 +56,6 @@ export default function WritePost() {
     if (files.length === 0) return;
     for (const f of files) {
       if (f && f.type?.startsWith('image/')) {
-        // eslint-disable-next-line no-await-in-loop
         await processImageFile(f);
       }
     }
