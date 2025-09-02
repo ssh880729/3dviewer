@@ -13,7 +13,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@supabase/supabase-js": "^2.56.1",
     "@tailwindcss/postcss": "^4.1.12",
+    "ftp": "^0.3.10",
+    "multer": "^2.0.2",
     "next": "^15.4.6",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

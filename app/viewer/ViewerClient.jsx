@@ -278,19 +278,91 @@ export default function ViewerClient() {
 											<div className="grid grid-cols-2 gap-2">
 												<div className="flex flex-col items-start gap-1">
 													<span className="opacity-70 text-xs">편집 U</span>
-													<input type="range" min="-2" max="2" step="0.05" defaultValue={0} className="w-16" onChange={(e)=>{ const v=parseFloat(e.target.value||'0'); window.__viewerApi?.setDecalOffset?.(v, window.__viewerApi?.getDecalState?.()?.offsetV || 0); }} />
+													<div className="flex items-center gap-1">
+														<button 
+															className="w-6 h-6 rounded border text-xs grid place-items-center hover:bg-gray-100"
+															onClick={() => {
+																const state = window.__viewerApi?.getDecalState?.();
+																const currentU = state?.offsetU || 0;
+																window.__viewerApi?.setDecalOffset?.(currentU - 0.1, state?.offsetV || 0);
+															}}
+														>-</button>
+														<input type="range" min="-2" max="2" step="0.05" defaultValue={0} className="w-12" onChange={(e)=>{ const v=parseFloat(e.target.value||'0'); window.__viewerApi?.setDecalOffset?.(v, window.__viewerApi?.getDecalState?.()?.offsetV || 0); }} />
+														<button 
+															className="w-6 h-6 rounded border text-xs grid place-items-center hover:bg-gray-100"
+															onClick={() => {
+																const state = window.__viewerApi?.getDecalState?.();
+																const currentU = state?.offsetU || 0;
+																window.__viewerApi?.setDecalOffset?.(currentU + 0.1, state?.offsetV || 0);
+															}}
+														>+</button>
+													</div>
 												</div>
 												<div className="flex flex-col items-start gap-1">
 													<span className="opacity-70 text-xs">V</span>
-													<input type="range" min="-2" max="2" step="0.05" defaultValue={0} className="w-16" onChange={(e)=>{ const v=parseFloat(e.target.value||'0'); window.__viewerApi?.setDecalOffset?.(window.__viewerApi?.getDecalState?.()?.offsetU || 0, v); }} />
+													<div className="flex items-center gap-1">
+														<button 
+															className="w-6 h-6 rounded border text-xs grid place-items-center hover:bg-gray-100"
+															onClick={() => {
+																const state = window.__viewerApi?.getDecalState?.();
+																const currentV = state?.offsetV || 0;
+																window.__viewerApi?.setDecalOffset?.(state?.offsetU || 0, currentV - 0.1);
+															}}
+														>-</button>
+														<input type="range" min="-2" max="2" step="0.05" defaultValue={0} className="w-12" onChange={(e)=>{ const v=parseFloat(e.target.value||'0'); window.__viewerApi?.setDecalOffset?.(window.__viewerApi?.getDecalState?.()?.offsetU || 0, v); }} />
+														<button 
+															className="w-6 h-6 rounded border text-xs grid place-items-center hover:bg-gray-100"
+															onClick={() => {
+																const state = window.__viewerApi?.getDecalState?.();
+																const currentV = state?.offsetV || 0;
+																window.__viewerApi?.setDecalOffset?.(state?.offsetU || 0, currentV + 0.1);
+															}}
+														>+</button>
+													</div>
 												</div>
 												<div className="flex flex-col items-start gap-1">
 													<span className="opacity-70 text-xs">SX</span>
-													<input type="range" min="0.1" max="3" step="0.1" defaultValue={1} className="w-16" onChange={(e)=>{ const sx=parseFloat(e.target.value||'1'); const st=window.__viewerApi?.getDecalState?.(); window.__viewerApi?.setDecalScale?.(sx, st?.scaleY || 1); }} />
+													<div className="flex items-center gap-1">
+														<button 
+															className="w-6 h-6 rounded border text-xs grid place-items-center hover:bg-gray-100"
+															onClick={() => {
+																const state = window.__viewerApi?.getDecalState?.();
+																const currentSX = state?.scaleX || 1;
+																window.__viewerApi?.setDecalScale?.(Math.max(0.1, currentSX - 0.1), state?.scaleY || 1);
+															}}
+														>-</button>
+														<input type="range" min="0.1" max="3" step="0.1" defaultValue={1} className="w-12" onChange={(e)=>{ const sx=parseFloat(e.target.value||'1'); const st=window.__viewerApi?.getDecalState?.(); window.__viewerApi?.setDecalScale?.(sx, st?.scaleY || 1); }} />
+														<button 
+															className="w-6 h-6 rounded border text-xs grid place-items-center hover:bg-gray-100"
+															onClick={() => {
+																const state = window.__viewerApi?.getDecalState?.();
+																const currentSX = state?.scaleX || 1;
+																window.__viewerApi?.setDecalScale?.(Math.min(3, currentSX + 0.1), state?.scaleY || 1);
+															}}
+														>+</button>
+													</div>
 												</div>
 												<div className="flex flex-col items-start gap-1">
 													<span className="opacity-70 text-xs">SY</span>
-													<input type="range" min="0.1" max="3" step="0.1" defaultValue={1} className="w-16" onChange={(e)=>{ const sy=parseFloat(e.target.value||'1'); const st=window.__viewerApi?.getDecalState?.(); window.__viewerApi?.setDecalScale?.(st?.scaleX || 1, sy); }} />
+													<div className="flex items-center gap-1">
+														<button 
+															className="w-6 h-6 rounded border text-xs grid place-items-center hover:bg-gray-100"
+															onClick={() => {
+																const state = window.__viewerApi?.getDecalState?.();
+																const currentSY = state?.scaleY || 1;
+																window.__viewerApi?.setDecalScale?.(state?.scaleX || 1, Math.max(0.1, currentSY - 0.1));
+															}}
+														>-</button>
+														<input type="range" min="0.1" max="3" step="0.1" defaultValue={1} className="w-12" onChange={(e)=>{ const sy=parseFloat(e.target.value||'1'); const st=window.__viewerApi?.getDecalState?.(); window.__viewerApi?.setDecalScale?.(st?.scaleX || 1, sy); }} />
+														<button 
+															className="w-6 h-6 rounded border text-xs grid place-items-center hover:bg-gray-100"
+															onClick={() => {
+																const state = window.__viewerApi?.getDecalState?.();
+																const currentSY = state?.scaleY || 1;
+																window.__viewerApi?.setDecalScale?.(state?.scaleX || 1, Math.min(3, currentSY + 0.1));
+															}}
+														>+</button>
+													</div>
 												</div>
 											</div>
 										</div>
