@@ -11,81 +11,47 @@ function generateFileName(originalName = '') {
   return `${ts}_${rand}${ext}`;
 }
 
+async function uploadToCafe24FTP(buffer, originalName) {
+  const { CAFE24_FTP_HOST, CAFE24_FTP_USER, CAFE24_FTP_PASSWORD, CAFE24_FTP_PORT, CAFE24_DOMAIN } = process.env;
+  if (!CAFE24_FTP_HOST || !CAFE24_FTP_USER || !CAFE24_FTP_PASSWORD || !CAFE24_DOMAIN) {
+    throw new Error('FTP 환경변수 누락');
+  }
+  const FTPModule = await import('ftp');
+  const FTP = FTPModule.default || FTPModule;
+  const client = new FTP();
+  const fileName = generateFileName(originalName);
+  const remotePath = `/www/uploads/${fileName}`;
+  await new Promise((resolve, reject) => {
+    client.on('ready', () => {
+      client.put(buffer, remotePath, (err) => {
+        if (err) { client.end(); return reject(err); }
+        client.end(); resolve(true);
+      });
+    });
+    client.on('error', reject);
+    client.connect({ host: CAFE24_FTP_HOST, user: CAFE24_FTP_USER, password: CAFE24_FTP_PASSWORD, port: Number(CAFE24_FTP_PORT || 21) });
+  });
+  return { url: `${CAFE24_DOMAIN}/uploads/${fileName}`, fileName };
+}
+
 export async function POST(request) {
   try {
-    const {
-      CAFE24_FTP_HOST,
-      CAFE24_FTP_USER,
-      CAFE24_FTP_PASSWORD,
-      CAFE24_FTP_PORT,
-      CAFE24_DOMAIN,
-    } = process.env;
-
-    if (!CAFE24_FTP_HOST || !CAFE24_FTP_USER || !CAFE24_FTP_PASSWORD || !CAFE24_DOMAIN) {
-      return NextResponse.json(
-        { error: '카페24 FTP 환경변수가 설정되지 않았습니다.' },
-        { status: 500 }
-      );
-    }
-
     const formData = await request.formData();
     const file = formData.get('image');
 
-    if (!file) {
-      return NextResponse.json({ error: '파일이 선택되지 않았습니다.' }, { status: 400 });
-    }
-    if (!file.type?.startsWith('image/')) {
-      return NextResponse.json({ error: '이미지 파일만 업로드 가능합니다.' }, { status: 400 });
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: '파일 크기는 5MB 이하여야 합니다.' }, { status: 400 });
-    }
-
-    const FTPModule = await import('ftp');
-    const FTP = FTPModule.default || FTPModule; // CJS 호환
-    const client = new FTP();
+    if (!file) return NextResponse.json({ error: '파일이 선택되지 않았습니다.' }, { status: 400 });
+    if (!file.type?.startsWith('image/')) return NextResponse.json({ error: '이미지 파일만 업로드 가능합니다.' }, { status: 400 });
+    if (file.size > 5 * 1024 * 1024) return NextResponse.json({ error: '파일 크기는 5MB 이하여야 합니다.' }, { status: 400 });
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const fileName = generateFileName(file.name);
-    const remotePath = `/www/uploads/${fileName}`;
 
-    const upload = () =>
-      new Promise((resolve, reject) => {
-        client.on('ready', () => {
-          client.put(buffer, remotePath, (err) => {
-            if (err) {
-              client.end();
-              return reject(err);
-            }
-            client.end();
-            resolve(true);
-          });
-        });
-        client.on('error', reject);
-        client.connect({
-          host: CAFE24_FTP_HOST,
-          user: CAFE24_FTP_USER,
-          password: CAFE24_FTP_PASSWORD,
-          port: Number(CAFE24_FTP_PORT || 21),
-        });
-      });
-
-    await upload();
-
-    return NextResponse.json({
-      success: true,
-      imageUrl: `${CAFE24_DOMAIN}/uploads/${fileName}`,
-      fileName,
-      originalName: file.name,
-      size: file.size,
-    });
+    // 카페24 FTP로만 업로드
+    const { url, fileName } = await uploadToCafe24FTP(buffer, file.name);
+    return NextResponse.json({ success: true, imageUrl: url, fileName, originalName: file.name, size: file.size });
   } catch (err) {
     console.error('업로드 오류:', err);
-    return NextResponse.json(
-      { error: '파일 업로드에 실패했습니다.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: '파일 업로드에 실패했습니다. (Cafe24)' }, { status: 500 });
   }
 }
 
